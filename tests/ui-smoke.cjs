@@ -7,8 +7,11 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'));
 const KEY = 'mefit.favorites.v1';
+const root = path.join(__dirname, '..');
 const server = http.createServer((req, res) => {
-  if (req.url === '/') { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); res.end(html); }
+  if (req.url === '/api/catalog') return require('../api/catalog')(req, res);
+  const file = ({ '/': 'index.html', '/catalog.js': 'catalog.js', '/data/catalog.json': 'data/catalog.json' })[req.url];
+  if (file) { res.writeHead(200, { 'Content-Type': file.endsWith('.js') ? 'text/javascript; charset=utf-8' : file.endsWith('.json') ? 'application/json' : 'text/html; charset=utf-8' }); res.end(fs.readFileSync(path.join(root, file))); }
   else { res.writeHead(404); res.end(); }
 });
 
@@ -28,6 +31,7 @@ const server = http.createServer((req, res) => {
     const save = () => page.locator('#info').getByRole('button', { name: /お気に入り/ });
 
     assert.equal((await page.goto(url)).status(), 200);
+    await page.waitForFunction(() => window.catalogReady === true);
     assert.equal(await page.locator('#nav button').count(), 3);
     assert.equal(await page.locator('#myV, #buyV').count(), 0);
     assert.equal(await page.getByText('合う色', { exact: true }).count(), 0);
@@ -41,7 +45,7 @@ const server = http.createServer((req, res) => {
     await page.locator('#shades .sh').nth(1).click();
     await save().click();
     await part('チーク').click();
-    await page.locator('#prods .pc').filter({ hasText: 'クリームチーク' }).click();
+    await page.locator('#prods .pc').filter({ has: page.getByText('クリームチーク', { exact: true }) }).click();
     await page.locator('#shades .sh').nth(2).click();
     await save().click();
     await part('リップ').click();
@@ -96,11 +100,11 @@ const server = http.createServer((req, res) => {
 
     // Storage is shared across tabs; closing and reopening pages retains favorites.
     const other = await context.newPage();
-    await other.goto(url);
+    await other.goto(url); await other.waitForFunction(() => window.catalogReady === true);
     await other.locator('#nav').getByRole('button', { name: 'お気に入り', exact: true }).click();
     await page.locator('.favorite-card').first().getByRole('button', { name: /お気に入りから削除/ }).click();
     await other.waitForFunction(() => document.querySelectorAll('.favorite-card').length === 3);
-    await page.reload();
+    await page.reload(); await page.waitForFunction(() => window.catalogReady === true);
     await nav('お気に入り').click();
     assert.equal(await page.locator('.favorite-card').count(), 3);
     const stored = await page.evaluate(key => JSON.parse(localStorage.getItem(key)), KEY);
@@ -136,7 +140,7 @@ const server = http.createServer((req, res) => {
     // Empty state after removing all entries.
     await nav('お気に入り').click();
     while (await page.locator('.favorite-card').count()) await page.locator('.favorite-card').first().getByRole('button', { name: /お気に入りから削除/ }).click();
-    await page.reload(); await nav('お気に入り').click();
+    await page.reload(); await page.waitForFunction(() => window.catalogReady === true); await nav('お気に入り').click();
     assert.match(await page.locator('#favV').innerText(), /まだお気に入りはありません/);
     assert.deepEqual(errors, []);
     await context.close();
@@ -147,7 +151,7 @@ const server = http.createServer((req, res) => {
     const bad = await invalid.newPage();
     await bad.goto(url);
     await bad.evaluate(key => localStorage.setItem(key, '{broken'), KEY);
-    await bad.reload();
+    await bad.reload(); await bad.waitForFunction(() => window.catalogReady === true);
     assert.match(await bad.locator('#notice').innerText(), /読み込めませんでした/);
     assert.equal(await bad.locator('#nav button').count(), 3);
     await bad.evaluate(key => localStorage.setItem(key, JSON.stringify([
@@ -155,7 +159,7 @@ const server = http.createServer((req, res) => {
       { cat: 'lip', pid: 'lm', code: '01' }, { cat: 'lip', pid: 'lm', code: '01' },
       { cat: 'lip', pid: 'removed', code: '01' },
     ])), KEY);
-    await bad.reload();
+    await bad.reload(); await bad.waitForFunction(() => window.catalogReady === true);
     await bad.locator('#nav').getByRole('button', { name: 'お気に入り', exact: true }).click();
     assert.equal(await bad.locator('.favorite-card').count(), 1);
     await invalid.close();
@@ -164,7 +168,7 @@ const server = http.createServer((req, res) => {
     await blocked.addInitScript(() => {
       Storage.prototype.setItem = () => { throw new DOMException('Storage blocked', 'QuotaExceededError'); };
     });
-    const noSave = await blocked.newPage(); await noSave.goto(url);
+    const noSave = await blocked.newPage(); await noSave.goto(url); await noSave.waitForFunction(() => window.catalogReady === true);
     await noSave.locator('#recV .li').first().click();
     await noSave.locator('#info').getByRole('button', { name: '♡ お気に入りに保存' }).click();
     assert.match(await noSave.locator('#notice').innerText(), /保存できませんでした/);

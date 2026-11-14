@@ -1,0 +1,23 @@
+-- Public catalog reads only. No public INSERT/UPDATE/DELETE policies.
+BEGIN;
+ALTER TABLE public.brands ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.brands TO anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.brands FROM anon, authenticated;
+CREATE POLICY mefit_catalog_read ON public.brands FOR SELECT TO anon, authenticated USING (true);
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.products TO anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.products FROM anon, authenticated;
+CREATE POLICY mefit_catalog_read ON public.products FOR SELECT TO anon, authenticated USING (true);
+ALTER TABLE public.shades ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.shades TO anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.shades FROM anon, authenticated;
+CREATE POLICY mefit_catalog_read ON public.shades FOR SELECT TO anon, authenticated USING (true);
+ALTER TABLE public.shade_colors ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.shade_colors TO anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.shade_colors FROM anon, authenticated;
+CREATE POLICY mefit_catalog_read ON public.shade_colors FOR SELECT TO anon, authenticated USING (true);
+ALTER TABLE public.popularity_evidence ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.popularity_evidence TO anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.popularity_evidence FROM anon, authenticated;
+CREATE POLICY mefit_catalog_read ON public.popularity_evidence FOR SELECT TO anon, authenticated USING (true);
+COMMIT;
