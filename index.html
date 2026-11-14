@@ -16,6 +16,7 @@ canvas{display:block;width:100%;height:auto;touch-action:manipulation;user-selec
 .msg{font-size:12px;color:var(--sub);text-align:center;margin:8px 0}.msg b{color:var(--pk)}
 .btn{display:block;width:100%;border:0;background:var(--pk);color:#fff;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none}
 .btn.g{background:var(--pk2);color:var(--pk)}.btn.s{display:inline-block;width:auto;padding:7px 12px;font-size:12px}
+.parts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}.parts .chip{border-radius:12px;white-space:normal;text-align:left}.parts small{display:block;font-size:10px;margin-top:3px}.btn:disabled{opacity:.55;cursor:default}.favorite-card{margin-bottom:10px}.favorite-head{display:flex;gap:10px;align-items:center}.favorite-head .sw{width:44px;height:44px;border-radius:12px;flex:none}.favorite-head .g{flex:1;min-width:0}.heart{border:1px solid var(--bd);border-radius:50%;background:var(--pk2);color:var(--pk);min-width:44px;min-height:44px;font-size:22px;cursor:pointer}#notice:empty{display:none}#notice{padding:10px;border:1px solid var(--bd);border-radius:12px;font-size:12px;margin:8px 0}
 .tabs,.shades{display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px}
 .chip{flex:none;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:99px;padding:7px 13px;font-size:13px;cursor:pointer}
 .chip.on{background:var(--pk);color:#fff;border-color:var(--pk)}
@@ -33,10 +34,12 @@ canvas{display:block;width:100%;height:auto;touch-action:manipulation;user-selec
 nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;display:flex;background:var(--card);border-top:1px solid var(--bd);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}nav button{flex:1;border:0;background:none;color:var(--sub);font-size:11px;padding:4px;cursor:pointer}nav button i{display:block;font-style:normal;font-size:20px}nav button.on{color:var(--pk);font-weight:700}#app{padding-bottom:90px}.li{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:10px;margin-bottom:8px;cursor:pointer}.li .sw{width:44px;height:44px;border-radius:12px;flex:none}.li .g{flex:1;min-width:0}.pct{background:var(--pk2);color:var(--pk);font-weight:800;border-radius:10px;padding:5px 8px;font-size:12px;text-align:center}.note{font-size:11px;color:var(--sub);line-height:1.6;margin-top:12px}
 </style></head><body><div id="app">
 <header>ME FIT<small id="sub"></small></header>
-<div id="recV"></div><div id="myV"></div><div id="buyV"></div><div id="tryV">
+<div id="notice" role="status" aria-live="polite"></div>
+<div id="recV"></div><div id="favV"></div><div id="tryV">
 <div class="stage" id="stage"></div>
 <div class="msg" id="msg"></div><div class="msg">濃さ（なじみ具合） <input type="range" min="30" max="120" value="80" oninput="S.k=this.value/100;draw()" style="vertical-align:middle;width:55%"><br><label><input type="checkbox" checked onchange="S.auto=this.checked;draw();msg()"> 口の形を自動で補正する</label></div>
-<div class="tabs" id="tabs"></div><div class="tabs" id="brands"></div><div class="prods" id="prods"></div><div class="shades" id="shades"></div>
+<p class="meta">試したいパーツを自由に選んでください。選んだメイクは重ねて試せます。</p>
+<div class="parts" id="tabs" aria-label="試すパーツ"></div><div class="tabs" id="brands"></div><div class="prods" id="prods"></div><div class="shades" id="shades"></div>
 <div id="info"></div></div>
 <nav id="nav"></nav>
 <p class="note">※ KATE・rom&nd・OPERA・CANMAKEの実在商品を収録しています。ほかのコスメは「自分で指定」で色を選んで試せます。画面の色は参考色で、実物の発色とは異なります。価格は変動するため購入先でご確認ください。<br>※ パッケージ画像は著作権の都合でこのモックには入れていません（仮の表示です）。</p>
@@ -60,7 +63,7 @@ eye:{label:"アイシャドウ",items:[
 brow:{label:"アイブロウ",items:[
 {id:"bw",b:"KATE",n:"アイブロウペンシル（パウダリーフィニッシュ）",price:"",tag:"",c:"#8a5f55",sh:[["05","フラッフィーピンクブラウン","#8a5f55"],["06","スリーピーグレージュ","#8c7d72"]]},
 {id:"cu",b:"自分で指定",n:"好きな色で試す",price:"",tag:"お手持ちのコスメに",c:"#8a5f55",sh:[["","自分で指定","#8a5f55"]]}]}};
-const S={cat:"lip",prod:"lm",ap:{},img:null,pts:[],before:false,cur:null,auto:true,lm:null,brand:"すべて",cmp:null,k:.8,tone:null,skinL:0,view:"rec",f:"すべて",only:false};
+const S={cat:"lip",prod:"lm",ap:{},img:null,pts:[],before:false,selections:{},editors:{},auto:true,lm:null,brand:"すべて",cmp:null,k:.8,tone:null,skinL:0,view:"rec",f:"すべて",only:false};
 const $=id=>document.getElementById(id);
 const prodOf=(c,id)=>D[c].items.find(p=>p.id==id)||D[c].items[0];
 function rgba(h,a){const n=parseInt(h.slice(1),16);return `rgba(${n>>16},${n>>8&255},${n&255},${a})`}
@@ -82,7 +85,7 @@ if(S.before)return;
 if(S.cmp){x.save();x.beginPath();x.rect(cv.width/2,0,cv.width/2,cv.height);x.clip();x.drawImage(S.img,0,0,cv.width,cv.height);layer(x,S.ap);x.restore();
 x.fillStyle="#fff";x.fillRect(cv.width/2-1,0,2,cv.height);x.font="bold 22px sans-serif";x.fillText("元",12,30);x.fillText("試す",cv.width/2+12,30)}
 else layer(x,S.ap)}
-function load(f){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{S.img=im;S.pts=[];S.ap={};renderStage()};im.src=r.result};r.readAsDataURL(f)}
+function load(f){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{S.img=im;S.pts=[];S.lm=null;S.tone=null;S.skinL=0;S.skinRG=0;S.before=false;S.cmp=false;renderStage();ui()};im.src=r.result};r.readAsDataURL(f)}
 $("file").onchange=e=>e.target.files[0]&&load(e.target.files[0]);
 function renderStage(){const st=$("stage");
 if(!S.img){st.innerHTML=`<div class="empty"><p>自分の顔写真（正面・明るい場所）を選ぶと、コスメを重ねて試せます。<br>写真はこの端末の中だけで使い、送信・保存はしません。</p><button class="btn" onclick="$('file').click()">顔写真を選ぶ</button></div>`;msg();return}
@@ -95,18 +98,41 @@ draw();msg()}
 function msg(){const m=$("msg"),n=S.pts.length;
 if(!S.img){m.innerHTML="";return}
 if(n<3){m.innerHTML=`位置合わせ：<b>${["① 片方の目","② もう片方の目","③ 口の中心"][n]}</b>をタップ`;return}
-m.innerHTML=(S.before?"<b>Before</b>（離すとAfter）":"画像を長押しで <b>Before</b> を確認")+` ／ <a href="#" onclick="S.pts=[];draw();msg();return false" style="color:var(--pk)">位置を取り直す</a> ／ <a href="#" onclick="$('file').click();return false" style="color:var(--pk)">写真を変更</a>`+(S.auto&&S.lm?" ／ 口の形：自動補正":" ／ 口の形：標準")+(S.tone?` ／ <a href="#" onclick="S.view='my';view();return false" style="color:var(--pk)">合う色を見る</a>`:"")}
-function pickShade(i){const p=prodOf(S.cat,S.prod);S.cur={cat:S.cat,pid:p.id,i};S.ap[S.cat]=p.sh[i][2];draw();ui()}
+m.innerHTML=(S.before?"<b>Before</b>（離すとAfter）":"画像を長押しで <b>Before</b> を確認")+` ／ <a href="#" onclick="S.pts=[];S.lm=null;S.tone=null;S.before=false;draw();msg();return false" style="color:var(--pk)">位置を取り直す</a> ／ <a href="#" onclick="$('file').click();return false" style="color:var(--pk)">写真を変更</a>`+(S.auto&&S.lm?" ／ 口の形：自動補正":" ／ 口の形：標準")}
+function selectPart(cat){
+S.editors[S.cat]={pid:S.prod,brand:S.brand};
+S.cat=cat;const editor=S.editors[cat];
+S.prod=editor?editor.pid:D[cat].items[0].id;S.brand=editor?editor.brand:"すべて";
+ui()}
+function pickShade(i){const p=prodOf(S.cat,S.prod);if(!p.sh[i])return;S.selections[S.cat]={pid:p.id,i};S.ap[S.cat]=p.sh[i][2];draw();ui()}
+function pickCustom(color){S.ap[S.cat]=color;S.selections[S.cat]={pid:"cu",color};draw();ui()}
+function clearPart(){delete S.ap[S.cat];delete S.selections[S.cat];draw();ui()}
 function plist(){const l=D[S.cat].items.filter(p=>S.brand=="すべて"||p.b==S.brand);return l.length?l:D[S.cat].items}
 function ui(){
-$("brands").innerHTML=["すべて",...new Set(D[S.cat].items.map(p=>p.b))].map(b=>`<button class="chip ${S.brand==b?"on":""}" onclick="S.brand='${b}';S.prod=plist()[0].id;ui()" style="font-size:12px;padding:5px 10px">${b}</button>`).join("");
-$("tabs").innerHTML=Object.keys(D).map(k=>`<button class="chip ${S.cat==k?"on":""}" onclick="S.cat='${k}';S.prod=D[k].items[0].id;S.brand='すべて';ui()">${D[k].label}</button>`).join("");
+$("brands").innerHTML=["すべて",...new Set(D[S.cat].items.map(p=>p.b))].map(b=>`<button class="chip ${S.brand==b?"on":""}" aria-pressed="${S.brand==b}" onclick="S.brand='${b}';S.prod=plist()[0].id;ui()" style="font-size:12px;padding:5px 10px">${b}</button>`).join("");
+$("tabs").innerHTML=Object.keys(D).map(k=>`<button class="chip ${S.cat==k?"on":""}" aria-pressed="${S.cat==k}" onclick="selectPart('${k}')">${D[k].label}<small>${S.ap[k]?"メイクを選択中":"まだ選択していません"}</small></button>`).join("");
 $("prods").innerHTML=plist().map(p=>`<div class="pc ${S.prod==p.id?"on":""}" onclick="S.prod='${p.id}';ui()"><div class="pkg" style="padding:0;flex-direction:row;overflow:hidden">${p.sh.map(s=>`<i style="flex:1;height:100%;background:${s[2]}"></i>`).join("")}</div><div class="n">${p.n}</div>${p.tag?`<div class="t">${p.tag}</div>`:""}</div>`).join("");
-const p=prodOf(S.cat,S.prod),sel=S.cur&&S.cur.cat==S.cat&&S.cur.pid==p.id?S.cur.i:-1;
-$("shades").innerHTML=p.id=="cu"?`<span class="meta">色を指定 →</span><input type="color" value="${S.ap[S.cat]||p.sh[0][2]}" oninput="S.ap[S.cat]=this.value;S.cur=null;draw()" style="width:64px;height:44px;border:0;background:none">`:p.sh.map((s,i)=>`<div class="sh ${sel==i?"on":""}" onclick="pickShade(${i})"><i style="background:${s[2]}"></i>${s[0]}<br>${s[1]}</div>`).join("");
-const sh=sel>=0?p.sh[sel]:null;
-$("info").innerHTML=`<div class="card"><div class="nm">${p.b} ${p.n}</div><div class="meta">${FEAT[p.id]||""}</div>${sh?`<div class="meta">色味：${tword(sh[2])}</div>`:""}<div class="meta">${sh?`品番 ${sh[0]} ${sh[1]}`:"色を選ぶとお顔に反映されます"}　${p.price?"税込 "+p.price:"価格は購入先で確認"}</div><div class="meta">${S.cmp?"比較中：左は元の顔、右は試した色（色を選ぶと右が変わります）":""}</div><div class="row" style="flex-wrap:wrap"><button class="btn g s" onclick="delete S.ap[S.cat];S.cur=null;draw();ui()">この色を外す</button><button class="btn g s" onclick="if(!S.cmp&&S.pts.length<3){$('msg').innerHTML='<b>先に顔写真を選び、目と口の位置をタップしてください</b>';return}S.cmp=!S.cmp;draw();ui()">${S.cmp?'比較をやめる':'元の顔と比べる'}</button><button class="btn s" onclick="S.view='buy';view()">購入を検討する</button></div></div>`}
-const SUBT={rec:"おすすめを見る",try:"顔写真で試す｜色を選ぶとその場で反映",my:"あなたに合う色",buy:"商品を選ぶ"};
+const p=prodOf(S.cat,S.prod),selection=S.selections[S.cat],sel=selection&&selection.pid==p.id&&Number.isInteger(selection.i)?selection.i:-1;
+$("shades").innerHTML=p.id=="cu"?`<span class="meta">色を指定 →</span><input aria-label="自分で指定する色" type="color" value="${selection&&selection.pid=="cu"?selection.color:p.sh[0][2]}" oninput="pickCustom(this.value)" style="width:64px;height:44px;border:0;background:none">`:p.sh.map((s,i)=>`<button class="sh ${sel==i?"on":""}" aria-pressed="${sel==i}" style="border:0;background:none;padding:4px" onclick="pickShade(${i})"><i style="background:${s[2]}"></i>${s[0]}<br>${s[1]}</button>`).join("");
+const sh=sel>=0?p.sh[sel]:null,saved=sh&&isFavorite(S.cat,p.id,sh[0]);
+$("info").innerHTML=`<div class="card"><div class="nm">${p.b} ${p.n}</div><div class="meta">${FEAT[p.id]||""}</div>${sh?`<div class="meta">色味：${tword(sh[2])}</div>`:""}<div class="meta">${sh?`品番 ${sh[0]} ${sh[1]}`:"色を選ぶとお顔に反映されます"}　${p.price?"税込 "+p.price:"価格は購入先で確認"}</div><div class="meta">${S.cmp?"比較中：左は元の顔、右は試した色（色を選ぶと右が変わります）":""}</div><div class="row" style="flex-wrap:wrap"><button class="btn g s" onclick="clearPart()">このパーツのメイクを外す</button><button class="btn g s" onclick="if(!S.cmp&&S.pts.length<3){$('msg').innerHTML='<b>先に顔写真を選び、目と口の位置をタップしてください</b>';return}S.cmp=!S.cmp;draw();ui()">${S.cmp?'比較をやめる':'元の顔と比べる'}</button></div>${p.id!="cu"?`<button class="btn g" style="margin-top:8px" ${sh?"":"disabled"} aria-pressed="${!!saved}" onclick="toggleFavorite('${S.cat}','${p.id}',${sel})">${saved?"♥ お気に入り登録済み":"♡ お気に入りに保存"}</button>${!sh?'<div class="meta">保存する色番を選んでください。</div>':""}`:'<div class="meta">お気に入りには商品の色番を保存できます。</div>'}</div>`}
+const SUBT={rec:"おすすめを見る",try:"好きなパーツを選んで、自由に試す",fav:"お気に入りの商品・色番"};
+const FAVORITES_KEY="mefit.favorites.v1";
+function favoriteItem(entry){
+if(!entry||typeof entry!=="object"||typeof entry.cat!=="string"||typeof entry.pid!=="string"||typeof entry.code!=="string"||!Object.hasOwn(D,entry.cat))return null;
+const p=D[entry.cat].items.find(p=>p.id==entry.pid&&p.id!="cu");if(!p)return null;
+const i=p.sh.findIndex(s=>s[0]===entry.code);return i<0?null:{cat:entry.cat,p,i,s:p.sh[i]}}
+function readFavorites(){try{const raw=localStorage.getItem(FAVORITES_KEY);if(raw===null)return [];const entries=JSON.parse(raw);if(!Array.isArray(entries))throw new Error("Invalid favorites");const seen=new Set();return entries.filter(entry=>{if(!favoriteItem(entry))return false;const key=JSON.stringify([entry.cat,entry.pid,entry.code]);if(seen.has(key))return false;seen.add(key);return true}).map(({cat,pid,code})=>({cat,pid,code}))}catch(e){$("notice").textContent="お気に入りを読み込めませんでした。ブラウザーの保存設定をご確認ください。";return []}}
+let favorites=readFavorites();
+function isFavorite(cat,pid,code){return favorites.some(f=>f.cat===cat&&f.pid===pid&&f.code===code)}
+function toggleFavorite(cat,pid,i){
+const p=D[cat]?.items.find(p=>p.id===pid&&p.id!=="cu"),s=p?.sh[i];if(!s)return;
+const next=isFavorite(cat,pid,s[0])?favorites.filter(f=>!(f.cat===cat&&f.pid===pid&&f.code===s[0])):[...favorites,{cat,pid,code:s[0]}];
+try{localStorage.setItem(FAVORITES_KEY,JSON.stringify(next));favorites=next;$("notice").textContent="";ui();if(S.view=="fav")renderFavorites()}catch(e){$("notice").textContent="お気に入りを保存できませんでした。ブラウザーの保存設定をご確認ください。"}}
+function renderFavorites(){
+const items=favorites.map(favoriteItem).filter(Boolean);
+$("favV").innerHTML='<p class="meta">お気に入りはこのブラウザーに保存されます。写真は保存しません。</p>'+(items.length?items.map(({cat,p,s,i})=>`<div class="card favorite-card"><div class="favorite-head"><div class="sw" style="background:${s[2]}"></div><div class="g"><div class="meta">${D[cat].label}</div><div class="nm">${p.b} ${p.n}</div><div class="meta">${s[0]} ${s[1]}</div><div class="meta">${p.price?"税込 "+p.price:"価格は購入先で確認"}</div></div><button class="heart" aria-label="${p.b} ${p.n} ${s[0]}をお気に入りから削除" aria-pressed="true" onclick="toggleFavorite('${cat}','${p.id}',${i})">♥</button></div><div class="row"><button class="btn g" onclick="go('${cat}','${p.id}',${i})">もう一度試す</button><a class="btn" target="_blank" rel="noopener" href="https://www.google.com/search?q=${encodeURIComponent(p.b+" "+p.n+" "+s[0]+" "+s[1])}">購入先を探す</a></div></div>`).join(""):'<div class="empty"><p>まだお気に入りはありません。<br>「試す」で好きな色番を選び、♡で保存してください。</p><button class="btn" onclick="S.view=&quot;try&quot;;view()">メイクを試す</button></div>')}
+window.addEventListener("storage",e=>{if(e.key===FAVORITES_KEY||e.key===null){favorites=readFavorites();ui();if(S.view=="fav")renderFavorites()}});
 const rgbOf=h=>{const n=parseInt(h.slice(1),16);return[n>>16,n>>8&255,n&255]};
 const hueOf=(r,g,b)=>{const mx=Math.max(r,g,b),mn=Math.min(r,g,b);if(mx==mn)return 0;let h=mx==r?(g-b)/(mx-mn):mx==g?2+(b-r)/(mx-mn):4+(r-g)/(mx-mn);h*=60;return h<0?h+360:h};
 const warm=h=>{const v=hueOf(...rgbOf(h));return v>=8&&v<50?"warm":(v>=285||v<8)?"cool":"mid"};
@@ -114,7 +140,6 @@ const tword=h=>{const [r,g,b]=rgbOf(h),v=hueOf(r,g,b),l=(r+g+b)/765,w=warm(h);co
 const score=h=>{if(!S.tone)return null;const w=warm(h),k=parseInt(h.slice(1),16)%7;return w==S.tone?90+k:w=="mid"?82+k:72+k};
 const pct=m=>`<div class="pct">相性<br>${m==null?"—":m+"%"}</div>`;
 const FEAT={rj:"ツヤと色持ちが人気のティントリップ。フルーツから着想を得た豊富な色展開です。",ot:"唇の水分に反応して色づく、透け感のあるティントのリップスティック。マスクにつきにくい処方です。",cc:"クリームジェルタイプのチーク。塗った瞬間サラサラになり、肌の内側からにじむように発色します。",cu:"お手持ちのコスメの色に合わせて、好きな色を指定して試せます。",lm:"発売以来人気の定番リップ。全7色＋WEB限定色の展開です。",lt:"リップモンスターのツヤ感のあるライン。色ごとにパーソナルカラー別のおすすめ色が紹介されています。",bc:"ほほにのせるチークシャドウ。PK-1はマキア ベストコスメ2026上半期 プチプラ部門1位です。",ec:"パール・マット・グリッターなど質感が豊富な単色アイシャドウ。好きな色を組み合わせて使えます。",bw:"パウダリーな仕上がりのアイブロウペンシルです。"};
-const BR=[["リップモンスター","リップ",1],["リップモンスター ツヤバース","リップ",1],["リップモンスター フォグマット","リップ",0],["バウンシーチークシャドウ","チーク",1],["ザ アイカラー","アイシャドウ",1],["アイブロウペンシル","アイブロウ",1],["レアフィットジェルペンシルA","アイライナー",0],["パウダリーナギナタライナー","アイライナー",0],["ラッシュマキシマイザー ロングアップ","マスカラ",0],["ナミダノタテマスカラ","マスカラ",0],["ジュレリープコンシーラー","コンシーラー",0],["ジュレリープクッションファンデーション","ファンデーション",0],["スムースフィットプレストパウダー","パウダー",0],["リアルシェードスティック","シェーディング",0]];
 function lipMask(){const cv=$("cv"),W=cv.width,H=cv.height,t=document.createElement("canvas");t.width=W;t.height=H;const x=t.getContext("2d",{willReadFrequently:true});x.drawImage(S.img,0,0,W,H);
 let [A,B,M]=S.pts;if(A[0]>B[0])[A,B]=[B,A];const d=Math.hypot(B[0]-A[0],B[1]-A[1]),a=Math.atan2(B[1]-A[1],B[0]-A[0]),ux=Math.cos(a),uy=Math.sin(a),vx=-uy,vy=ux;
 const R=Math.ceil(.8*d),x0=Math.max(0,Math.round(M[0]-R)),y0=Math.max(0,Math.round(M[1]-R)),x1=Math.min(W,Math.round(M[0]+R)),y1=Math.min(H,Math.round(M[1]+R)),w=x1-x0,h=y1-y0;if(w<10||h<10)return null;
@@ -138,19 +163,14 @@ let [A,B]=S.pts;if(A[0]>B[0])[A,B]=[B,A];const d=Math.hypot(B[0]-A[0],B[1]-A[1])
 let r=0,g=0,b=0,n=0;[A,B].forEach(E=>{const cx=E[0]+vx*.85*d,cy=E[1]+vy*.85*d,k=Math.max(4,Math.round(.12*d));try{const im=x.getImageData(Math.round(cx-k),Math.round(cy-k),2*k,2*k).data;for(let i=0;i<im.length;i+=4){r+=im[i];g+=im[i+1];b+=im[i+2];n++}}catch(e){}});
 if(!n)return;r/=n;g/=n;b/=n;S.skinL=(r+g+b)/765;S.skinRG=r-g;S.tone=hueOf(r,g,b)<20?"cool":"warm";try{S.lm=lipMask()}catch(e){S.lm=null}}
 function all(){const r=[];for(const k in D)D[k].items.filter(p=>p.id!="cu").forEach(p=>p.sh.forEach((s,i)=>r.push({k,p,s,i,m:score(s[2])})));return r.sort((a,b)=>(b.m||0)-(a.m||0))}
-function go(k,pid,i){S.cat=k;S.prod=pid;S.cmp=null;S.view="try";view();pickShade(i)}
-function view(){["rec","try","my","buy"].forEach(v=>$(v+"V").style.display=S.view==v?"block":"none");
+function go(k,pid,i){S.editors[S.cat]={pid:S.prod,brand:S.brand};S.cat=k;S.prod=pid;S.brand="すべて";S.cmp=false;S.view="try";pickShade(i);view()}
+function view(){["rec","try","fav"].forEach(v=>$(v+"V").style.display=S.view==v?"block":"none");
 $("sub").textContent=SUBT[S.view];
-$("nav").innerHTML=[["rec","✨","おすすめ"],["try","💄","試す"],["my","🔍","合う色"],["buy","🛍️","選ぶ"]].map(t=>`<button class="${S.view==t[0]?"on":""}" onclick="S.view='${t[0]}';view()"><i>${t[1]}</i>${t[2]}</button>`).join("");
+$("nav").innerHTML=[["rec","✨","おすすめ"],["try","💄","試す"],["fav","♡","お気に入り"]].map(t=>`<button class="${S.view==t[0]?"on":""}" aria-label="${t[2]}" aria-current="${S.view==t[0]?"page":"false"}" onclick="S.view='${t[0]}';view()"><i aria-hidden="true">${t[1]}</i>${t[2]}</button>`).join("");
+if(S.view=="try")ui();
 if(S.view=="rec"){const fs=["すべて",...Object.values(D).map(d=>d.label)];
 $("recV").innerHTML=`<p class="meta">SNSで話題の新作・人気色から、診断結果をもとに似合いそうな色を提案します（相性%はデモ用の仮の値）。</p><div class="tabs">${fs.map(f=>`<button class="chip ${S.f==f?"on":""}" onclick="S.f='${f}';view()">${f}</button>`).join("")}<button class="chip ${S.only?"on":""}" onclick="S.only=!S.only;view()">似合う色だけ</button></div>`+
 all().filter(r=>(S.f=="すべて"||D[r.k].label==S.f)&&(!S.only||(r.m||0)>=88)).map(r=>`<div class="li" onclick="go('${r.k}','${r.p.id}',${r.i})"><div class="sw" style="background:${r.s[2]}"></div><div class="g"><div class="nm">${r.p.b} ${r.p.n}</div><div class="meta">${r.s[0]} ${r.s[1]}${r.p.tag?"・"+r.p.tag:""}</div></div>${pct(r.m)}</div>`).join("")}
-if(S.view=="my"){
-if(!S.tone){$("myV").innerHTML=`<div class="card"><div class="nm">まず顔写真を登録</div><p class="meta">「試す」で写真を選び、目と口の位置をタップすると、頬の色から肌の色味の目安を出して、合いそうな色を提案します。</p><button class="btn" onclick="S.view='try';view()">試す画面へ</button></div>`}
-else{const t=S.tone,top=all().filter(r=>r.m).slice(0,6);
-$("myV").innerHTML=`<div class="card"><div class="nm">肌の色味の目安：${t=="warm"?"イエベ寄り（黄み）":"ブルベ寄り（青み）"}</div><p class="meta">明るさ：${S.skinL<.45?"深め":S.skinL<.65?"標準":"明るめ"}。写真の光や色補正で変わるため、あくまで目安です。違うと感じたら切り替えてください。</p><div class="row"><button class="btn s ${t=="warm"?"":"g"}" onclick="S.tone='warm';view()">イエベ寄り</button><button class="btn s ${t=="cool"?"":"g"}" onclick="S.tone='cool';view()">ブルベ寄り</button></div></div><h3 style="font-size:15px;margin:14px 0 8px">このコスメが合いそうです</h3>`+top.map(r=>`<div class="li" onclick="go('${r.k}','${r.p.id}',${r.i})"><div class="sw" style="background:${r.s[2]}"></div><div class="g"><div class="nm">${r.p.b} ${r.p.n}</div><div class="meta">${r.s[0]} ${r.s[1]}</div><div class="meta">${tword(r.s[2])}</div></div>${pct(r.m)}</div>`).join("")}
-$("myV").innerHTML+=`<h3 style="font-size:15px;margin:16px 0 8px">KATE（ケイト）にはこんな商品があります</h3>`+BR.map(b=>`<div class="li" style="cursor:default"><div class="g"><div class="nm">${b[0]}</div><div class="meta">${b[1]}</div></div>${b[2]?'<div class="pct">試せる</div>':""}</div>`).join("")+`<h3 style="font-size:15px;margin:16px 0 8px">ほかのブランドの商品</h3>`+Object.values(D).flatMap(d=>d.items).filter(p=>p.b!="KATE"&&p.id!="cu").map(p=>`<div class="li" onclick="go('${Object.keys(D).find(k=>D[k].items.includes(p))}','${p.id}',0)"><div class="g"><div class="nm">${p.b} ${p.n}</div><div class="meta">${p.sh.length}色</div></div><div class="pct">試せる</div></div>`).join("")+`<p class="note">「試せる」以外の商品は、このモックでは色の反映に対応していません。</p>`}
-if(S.view=="buy"){const p=prodOf(S.cat,S.prod),c=S.cur&&S.cur.pid==p.id?p.sh[S.cur.i]:p.sh[0];
-$("buyV").innerHTML=`<div class="card"><div class="li" style="border:0;padding:0;cursor:default"><div class="sw" style="background:${c[2]}"></div><div class="g"><div class="nm">${p.b} ${p.n}</div><div class="meta">品番 ${c[0]} ${c[1]}</div><div class="meta">${p.price?"税込 "+p.price:"価格は購入先で確認"}</div></div>${pct(score(c[2]))}</div></div><div class="card"><div class="nm">商品の特徴・色味</div><p class="meta">${FEAT[p.id]||""}</p><p class="meta">色味：${tword(c[2])}</p></div><div class="card"><div class="nm">お顔でもう一度確認</div><div class="row"><button class="btn g" onclick="S.view='try';view()">試す画面に戻る</button></div></div><div class="row" style="margin-top:10px"><a class="btn" target="_blank" rel="noopener" href="https://www.google.com/search?q=${encodeURIComponent(p.b+" "+p.n+" "+c[0]+" "+c[1])}">購入先を探す</a></div><p class="note">アプリ内での購入は行わず、購入先へご案内します。</p>`}}
+if(S.view=="fav")renderFavorites()}
 renderStage();ui();view();
 </script></body></html>
