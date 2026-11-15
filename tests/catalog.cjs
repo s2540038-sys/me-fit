@@ -11,14 +11,30 @@ const result = Catalog.merge(payload.tables, base);
 const products = Object.values(result.data).flatMap(d => d.items).filter(p => p.id !== 'cu');
 assert.equal(products.length, 121);
 assert.equal(products.reduce((n, p) => n + p.sh.length, 0), 839);
-assert.equal(products.reduce((n, p) => n + p.sh.filter(s => Catalog.isColor(s[2])).length, 0), 52);
+assert.equal(products.reduce((n, p) => n + p.sh.filter(s => Catalog.isColor(s[2])).length, 0), 819);
 assert.equal(Object.values(base).flatMap(d => d.items).filter(p => p.id !== 'cu').length, 8, 'Merge must not mutate the original');
 const again = Catalog.merge(payload.tables, result.data);
 assert.deepEqual(again.data, result.data, 'Reimport must not duplicate shades');
 assert.ok(products.find(p => p.id === 'rj'), 'Keep the old product omitted from the workbook');
 assert.ok(products.find(p => p.id === 'cc').sh.some(s => s[0] === '02'), 'Keep the old color omitted from the workbook');
-assert.equal(products.find(p => p.id === 'p0001').sh[0][2], null, 'Unknown colors stay unknown');
+assert.equal(products.find(p => p.id === 'p0052').sh[0][2], null, 'Unknown colors stay unknown');
 assert.equal(products.find(p => p.id === 'p0049').sh.filter(s => s[0].startsWith('@')).length, 5, 'Name-only shades need distinct keys');
+const references = require('../data/reference-colors.json');
+assert.equal(references.entries.length, 767);
+assert.equal(references.unresolved.length, 20);
+for (const entry of references.entries) {
+  const color = payload.tables.shade_colors.find(c => c.shade_id === entry.shade_id);
+  assert.equal(color.color_hex, entry.color_hex);
+  assert.ok(Catalog.safeUrl(color.color_source_url));
+  assert.ok(['official_value', 'swatch_estimate'].includes(color.color_method));
+}
+for (const category of Object.keys(base)) for (const legacy of base[category].items) {
+  if (legacy.id === 'cu') continue;
+  const current = products.find(p => p.id === legacy.id);
+  for (const shade of legacy.sh) assert.equal(current.sh.find(s => s[0] === shade[0])[2], shade[2], 'Preserve every legacy color');
+}
+assert.equal(products.find(p => p.id === 'p0001').shadeMeta['01'].colorMethod, 'swatch_estimate');
+assert.equal(products.find(p => p.id === 'p0050').shadeMeta['905'].colorMethod, 'official_value');
 const malformed = structuredClone(payload.tables);
 malformed.shades[0].product_id = 'missing';
 assert.throws(() => Catalog.merge(malformed, base));

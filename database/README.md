@@ -9,6 +9,7 @@ SQLファイルや公開設定ファイルがあるだけでは、クラウドDB
 1. `setup.sql`：5テーブルを作成しRLSを有効化。
 2. `seed.sql`：16ブランド・120商品・827色番・13色コード・56件の人気根拠を登録。
 3. `read-access.sql`：anon/authenticatedにSELECTのみを許可。
+4. `reference-colors.sql`：2026-11-15に確認した公式参考色767色を追加。`(shade_id,position)`が既存ならスキップし、既存色は保持。
 
 同名の既存テーブルがある場合は、作成SQLを適用する前に構造とデータを照合してください。
 データ登録は同じIDがあれば上書きせずスキップします。削除処理は含みません。
@@ -35,7 +36,7 @@ python3 scripts/supabase-admin.py PROJECT_REF --apply
 Excelの`verified_on`を、既存のTIMESTAMP列ではその日付の00:00:00として保存します。
 これは日付だけを格納するための規約で、実際の確認時刻を表すものではありません。
 不明な価格・発売日・色コードにはNULLを使い、仮値を入れていません。
-価格未登録25商品、商品発売日未登録120商品、色コード未登録814色です。
+価格未登録25商品、商品発売日未登録120商品、Excel取込時点では色コード未登録814色です。公式参考色追加後、DBは780色・未登録47色です。アプリでは既存27色がさらに補完され、未登録20色になります。
 出典URLの内容や事実関係は、今回外部サイトで再確認したものではなくExcelの提供値です。
 
 ## 既存アプリとの関係
@@ -56,4 +57,10 @@ UNION ALL SELECT 'shade_colors', COUNT(*) FROM public.shade_colors
 UNION ALL SELECT 'popularity_evidence', COUNT(*) FROM public.popularity_evidence;
 ```
 
-期待値は16、120、827、13、56です。DB登録後は`/api/catalog`が`source: "supabase"`を返すことも確認します。
+公式参考色追加後の期待値は16、120、827、780、56です（seedのみなら色コード13件）。DB登録後は`/api/catalog`が`source: "supabase"`を返すことも確認します。
+
+## 公式参考色の追加
+
+`reference-colors.sql`はスキーマ・RLS・読み取り権限を変更せず、既存色を上書きしません。再実行しても色は増えません。採色の出典と画像ハッシュ、採色範囲、未登録理由は`../data/reference-colors.json`に保存しています。画像由来の参考色は`swatch_estimate`、公式ページの表示用HEXは`official_value`です。`opacity`は測定していないためNULLを保持します。
+
+2026-11-15に適用し、追加767件の`shade_id|color_hex|color_source_url|color_method`を色番ID順・改行区切りで連結したMD5が、保存データとDBで`1ace06927af22635537fcfd8a5da639c`と一致しました。

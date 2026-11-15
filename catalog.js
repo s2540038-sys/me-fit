@@ -31,7 +31,7 @@
     for (const c of tables.shade_colors) {
       if (!shades.has(c.shade_id) || !Number.isInteger(c.position) || c.position < 0 || !isColor(c.color_hex)) throw new Error('Invalid shade color');
       // The current renderer uses one representative color, not a palette's multiple colors.
-      if (c.position === 0) colors.set(c.shade_id, c.color_hex);
+      if (c.position === 0) colors.set(c.shade_id, c);
     }
     for (const e of tables.popularity_evidence) if (!products.has(e.product_id) || !['ranking', 'award'].includes(e.evidence_type)) throw new Error('Invalid popularity reference');
     const result = structuredClone(previous);
@@ -58,9 +58,10 @@
         const code = s.shade_code || `@${s.id}`;
         const index = item.sh.findIndex(x => x[0] === code);
         const old = index < 0 ? null : item.sh[index];
-        const color = colors.get(s.id) || (old && isColor(old[2]) ? old[2] : null);
+        const reference = colors.get(s.id);
+        const color = reference?.color_hex || (old && isColor(old[2]) ? old[2] : null);
         const row = [code, s.name || '', color];
-        item.shadeMeta[code] = { id: s.id, code: s.shade_code || '', sourceUrl: safeUrl(s.source_url), legacyColor: !colors.has(s.id) && !!color };
+        item.shadeMeta[code] = { id: s.id, code: s.shade_code || '', sourceUrl: safeUrl(s.source_url), legacyColor: !reference && !!color, colorSourceUrl: safeUrl(reference?.color_source_url), colorMethod: reference?.color_method || '' };
         if (index < 0) { item.sh.push(row); addedShades++; } else item.sh[index] = row;
       }
       if (!item.sh.length) throw new Error('Product without shades');
