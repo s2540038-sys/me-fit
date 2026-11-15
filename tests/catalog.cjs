@@ -31,7 +31,9 @@ assert.ok(!Catalog.escape(p.n).includes('<img'));
 assert.equal(Catalog.safeUrl('https://user:pass@example.com'), '');
 const anon = 'e30.' + Buffer.from(JSON.stringify({ role: 'anon' })).toString('base64url') + '.signature';
 const admin = 'e30.' + Buffer.from(JSON.stringify({ role: 'service_role' })).toString('base64url') + '.signature';
-assert.equal(api.connection({}), null);
+const configured = api.connection({});
+assert.ok(!configured || configured.url.startsWith('https://'));
+assert.ok(!configured || configured.key.startsWith('sb_publishable_'));
 assert.equal(api.connection({ SUPABASE_URL: 'https://example.supabase.co', SUPABASE_ANON_KEY: anon }).key, anon);
 assert.throws(() => api.connection({ SUPABASE_URL: 'https://example.supabase.co', SUPABASE_ANON_KEY: admin }));
 assert.throws(() => api.connection({ SUPABASE_URL: 'http://localhost', SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test' }));
@@ -51,10 +53,28 @@ assert.throws(() => api.connection({ SUPABASE_URL: 'http://localhost', SUPABASE_
   await assert.rejects(api.loadTables({ url: 'https://example.supabase.co', key: anon }, async () => ({ ok: false })));
   const output = [];
   const res = { setHeader() {}, end(text) { output.push(JSON.parse(text)); } };
-  await api({ method: 'GET' }, res);
-  assert.equal(res.statusCode, 200);
-  assert.equal(output[0].source, 'snapshot');
-  assert.equal(output[0].tables.products.length, 120);
-  assert.equal(JSON.stringify(output).includes('SUPABASE_ACCESS_TOKEN'), false);
+  const originalFetch = global.fetch;
+  try {
+    global.fetch = async () => { throw new Error('Simulated network failure'); };
+    await api({ method: 'GET' }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(output[0].source, 'snapshot');
+    assert.equal(output[0].tables.products.length, 120);
+    assert.equal(JSON.stringify(output).includes('SUPABASE_ACCESS_TOKEN'), false);
+    if (configured) {
+      assert.equal(output[0].degraded, true);
+      global.fetch = async (url, options) => {
+        assert.equal(new URL(url).origin, configured.url);
+        assert.equal(options.headers.apikey, configured.key);
+        const name = new URL(url).pathname.split('/').pop();
+        return { ok: true, json: async () => payload.tables[name] };
+      };
+      await api({ method: 'GET' }, res);
+      assert.equal(output[1].source, 'supabase');
+      assert.equal(output[1].tables.products.length, 120);
+      assert.equal(output[1].tables.shades.length, 827);
+      assert.equal(JSON.stringify(output[1]).includes(configured.key), false);
+    }
+  } finally { global.fetch = originalFetch; }
   console.log('PASS: 120 imported + preserved legacy catalog, idempotence, unknown colors, name-only shades, referential integrity, HTML escaping, public-key restrictions, pagination, snapshot fallback.');
 })().catch(e => { console.error(e); process.exitCode = 1; });

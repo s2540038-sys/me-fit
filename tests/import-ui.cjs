@@ -8,7 +8,7 @@ const root = path.join(__dirname, '..');
 let mode = 'normal';
 const server = http.createServer((req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-  if (req.url === '/api/catalog' && mode === 'normal') return require('../api/catalog')(req, res);
+  if (req.url === '/api/catalog' && mode === 'normal') { res.setHeader('Content-Type', 'application/json'); return res.end(JSON.stringify({ ...payload, source: 'snapshot' })); }
   const filename = ({ '/': 'index.html', '/catalog.js': 'catalog.js', '/data/catalog.json': 'data/catalog.json' })[req.url];
   if (filename && !(mode === 'offline' && filename.endsWith('.json'))) {
     res.writeHead(200, { 'Content-Type': filename.endsWith('.js') ? 'text/javascript' : filename.endsWith('.json') ? 'application/json' : 'text/html; charset=utf-8' });

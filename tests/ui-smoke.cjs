@@ -9,7 +9,7 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'));
 const KEY = 'mefit.favorites.v1';
 const root = path.join(__dirname, '..');
 const server = http.createServer((req, res) => {
-  if (req.url === '/api/catalog') return require('../api/catalog')(req, res);
+  if (req.url === '/api/catalog') { res.setHeader('Content-Type', 'application/json'); return res.end(JSON.stringify({ ...require('../data/catalog.json'), source: 'snapshot' })); }
   const file = ({ '/': 'index.html', '/catalog.js': 'catalog.js', '/data/catalog.json': 'data/catalog.json' })[req.url];
   if (file) { res.writeHead(200, { 'Content-Type': file.endsWith('.js') ? 'text/javascript; charset=utf-8' : file.endsWith('.json') ? 'application/json' : 'text/html; charset=utf-8' }); res.end(fs.readFileSync(path.join(root, file))); }
   else { res.writeHead(404); res.end(); }
